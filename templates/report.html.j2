@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Cloud Misconfiguration Scanner - Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1,h2 { margin-bottom: 6px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    .bad { background: #ffe6e6; }
+    .warn { background: #fff3cd; }
+    .ok { background: #e6ffea; }
+    code { background: #f4f4f4; padding: 2px 4px; }
+  </style>
+</head>
+<body>
+  <h1>Cloud Misconfiguration Scanner Report</h1>
+  <p><strong>Generated:</strong> {{ results.generated_at }}</p>
+
+  <h2>S3</h2>
+  <p>Total buckets: {{ results.s3.total_buckets }}</p>
+
+  <h3>Public / Risky Buckets</h3>
+  <table>
+    <tr><th>Bucket</th><th>Public Policy</th><th>Public ACL</th><th>BPA Disabled</th></tr>
+    {% for b in results.s3.public_buckets %}
+      <tr class="bad"><td>{{ b.bucket }}</td><td>{{ b.public_policy }}</td><td>{{ b.public_acl }}</td><td>{{ b.bpa_disabled }}</td></tr>
+    {% endfor %}
+    {% if results.s3.public_buckets|length == 0 %}
+      <tr class="ok"><td colspan="4">No publicly exposed buckets detected.</td></tr>
+    {% endif %}
+  </table>
+
+  <h3>Buckets without default encryption</h3>
+  <table>
+    <tr><th>Bucket</th></tr>
+    {% for name in results.s3.unencrypted_buckets %}
+      <tr class="warn"><td>{{ name }}</td></tr>
+    {% endfor %}
+    {% if results.s3.unencrypted_buckets|length == 0 %}
+      <tr class="ok"><td>All buckets have default encryption configured or no buckets present.</td></tr>
+    {% endif %}
+  </table>
+
+  <h2>EC2 Security Groups</h2>
+  <p>Total security groups scanned: {{ results.ec2.total_security_groups }}</p>
+  <h3>World-open inbound rules</h3>
+  <table>
+    <tr><th>SG ID</th><th>Name</th><th>VPC</th><th>Proto</th><th>From</th><th>To</th><th>IPv4</th><th>IPv6</th></tr>
+    {% for sg in results.ec2.world_open_rules %}
+      <tr class="bad">
+        <td>{{ sg.security_group_id }}</td>
+        <td>{{ sg.name }}</td>
+        <td>{{ sg.vpc }}</td>
+        <td>{{ sg.protocol }}</td>
+        <td>{{ sg.from_port }}</td>
+        <td>{{ sg.to_port }}</td>
+        <td>{{ sg.world_open_ipv4 }}</td>
+        <td>{{ sg.world_open_ipv6 }}</td>
+      </tr>
+    {% endfor %}
+    {% if results.ec2.world_open_rules|length == 0 %}
+      <tr class="ok"><td colspan="8">No world-open rules found.</td></tr>
+    {% endif %}
+  </table>
+
+  <h2>IAM</h2>
+  <p>Total users: {{ results.iam.total_users }}</p>
+  <h3>Users without MFA</h3>
+  <table>
+    <tr><th>User</th></tr>
+    {% for u in results.iam.users_without_mfa %}
+      <tr class="bad"><td>{{ u }}</td></tr>
+    {% endfor %}
+    {% if results.iam.users_without_mfa|length == 0 %}
+      <tr class="ok"><td>All users have MFA enabled.</td></tr>
+    {% endif %}
+  </table>
+
+  <p><em>Note: world-open means 0.0.0.0/0 or ::/0</em></p>
+</body>
+</html>
